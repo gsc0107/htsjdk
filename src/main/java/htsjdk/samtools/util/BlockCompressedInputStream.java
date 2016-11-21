@@ -283,7 +283,8 @@ public class BlockCompressedInputStream extends InputStream implements LocationA
     public void seek(final long pos)
         throws IOException {
         if (mFile == null) {
-            throw new IOException("Cannot seek on stream based file");
+
+            throw new IOException("Cannot seek on stream based file " + mFile.getSource());
         }
         // Decode virtual file pointer
         // Upper 48 bits is the byte offset into the compressed stream of a block.
@@ -302,7 +303,7 @@ public class BlockCompressedInputStream extends InputStream implements LocationA
         }
         if (uncompressedOffset > available ||
                 (uncompressedOffset == available && !eof())) {
-            throw new IOException("Invalid file pointer: " + pos);
+            throw new IOException("Invalid file pointer: " + pos + " for " + mFile.getSource());
         }
         mCurrentOffset = uncompressedOffset;
     }
@@ -378,16 +379,16 @@ public class BlockCompressedInputStream extends InputStream implements LocationA
             return;
         }
         if (count != BlockCompressedStreamConstants.BLOCK_HEADER_LENGTH) {
-            throw new IOException("Premature end of file");
+            throw new IOException("Premature end of " + mFile.getSource());
         }
         final int blockLength = unpackInt16(mFileBuffer, BlockCompressedStreamConstants.BLOCK_LENGTH_OFFSET) + 1;
         if (blockLength < BlockCompressedStreamConstants.BLOCK_HEADER_LENGTH || blockLength > mFileBuffer.length) {
-            throw new IOException("Unexpected compressed block length: " + blockLength);
+            throw new IOException("Unexpected compressed block length: " + blockLength + " for " + mFile.getSource());
         }
         final int remaining = blockLength - BlockCompressedStreamConstants.BLOCK_HEADER_LENGTH;
         count = readBytes(mFileBuffer, BlockCompressedStreamConstants.BLOCK_HEADER_LENGTH, remaining);
         if (count != remaining) {
-            throw new FileTruncatedException("Premature end of file");
+            throw new FileTruncatedException("Premature end of " + mFile.getSource());
         }
         inflateBlock(mFileBuffer, blockLength);
         mCurrentOffset = 0;
@@ -404,7 +405,7 @@ public class BlockCompressedInputStream extends InputStream implements LocationA
             try {
                 buffer = new byte[uncompressedLength];
             } catch (final NegativeArraySizeException e) {
-                throw new RuntimeIOException("BGZF file has invalid uncompressedLength: " + uncompressedLength, e);
+                throw new RuntimeIOException(mFile.getSource() + " has invalid uncompressedLength: " + uncompressedLength, e);
             }
         }
         blockGunzipper.unzipBlock(buffer, compressedBlock, compressedLength);
